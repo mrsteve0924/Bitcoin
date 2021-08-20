@@ -2,7 +2,7 @@
 
 stty -echo #effectively makes terminal read only.  use 'stty echo' to revert
 
-#script to send me an email/text if bitcoind unexpectedly stops
+#script to send me an email/text if bitcoind crashes
 pkill monitor 
 ./monitor &
 
