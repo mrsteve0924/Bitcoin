@@ -125,16 +125,14 @@ df -h --output='target','size','used','avail','pcent'| grep -w Mounted ; df -h -
 clear
 echo "$output"
 
-#play a cash register sound if receive bitcoin
+#play a cash register sound if received new bitcoin
 if [ $wallet = 1 ]
 	then ssh root@192.168.1.6 'mpg123 -q - ' < /home/pi/.bitcoin/cash.mp3
 fi
 
 echo BTC0=$BTC0 > /home/pi/.bitcoin/BTC_value
 
-
-
-#write out some variables for troubleshooting in case bitcoind shuts down
+#write out some variables for troubleshooting in case bitcoind crashes
 date > node_down_log
 echo Block:  $block0_fmt   Age:  $block0_age  minutes >> node_down_log
 echo Mempool: $mem_pool >> node_down_log
