@@ -6,4 +6,5 @@ some bitcoin-cli commands put together to get useful information from bitcoind
 
 
 ./addr
+
 compares current wallet addresses to used ones to prevent reusing old ones
