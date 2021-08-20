@@ -1,0 +1,150 @@
+#!/bin/bash
+
+stty -echo #effectively makes terminal read only.  use 'stty echo' to revert
+
+#script to send me an email/text if bitcoind unexpectedly stops
+pkill monitor 
+./monitor &
+
+#echo -ne "\x1b[?25h"  #shows cursor
+echo -ne "\x1b[?25l"  #hides cursor
+
+
+while pgrep bitcoind > /dev/null
+do
+
+source /home/pi/.bitcoin/BTC_value  #hacky thing defines $BTC0 to get wallet balance to flash when new incoming BTC arrives
+
+#Network
+#bytes up/down
+bytes_rcv=$(echo "scale=4; $(bitcoin-cli getnettotals| jq .totalbytesrecv)/1000000000" | bc)
+bytes_snt=$(echo "scale=4; $(bitcoin-cli getnettotals| jq .totalbytessent)/1000000000" | bc)
+peers=$(bitcoin-cli getnetworkinfo | jq .connections)
+outbound=$(bitcoin-cli getnetworkinfo | jq .connections_out)
+inbound=$(bitcoin-cli getnetworkinfo | jq .connections_in)
+
+#server up time
+seconds=$(bitcoin-cli uptime)
+
+#Wallet
+
+if [ "$(bitcoin-cli getbalance)" \> "$BTC0" ]
+	then wallet=1
+	else wallet=0
+fi
+BTC_diff=$(echo "$(bitcoin-cli getbalance)-$BTC0" | bc)
+
+#BTC and $US info
+BTC0=$(bitcoin-cli getbalance)
+BTC1=$(curl -s https://api.coindesk.com/v1/bpi/currentprice/usd.json | jq -r .bpi.USD.rate | sed 's/..$//')
+BTC2=$(curl -s https://api.coindesk.com/v1/bpi/currentprice/usd.json | jq .bpi.USD.rate_float)
+BTC_US=$(echo "scale=2; ($BTC0*$BTC2)/1" | bc | sed -e :a -e 's/\(.*[0-9]\)\([0-9]\{3\}\)/\1,\2/;ta')
+
+
+#miner fees and fees per tx
+feerate=$(curl -s "https://mempool.space/api/v1/fees/recommended" | jq .hourFee) # fee in satoshis/byte
+miner_fee_US=$(echo "scale=2; ($feerate*144*.00000001*$BTC2)/1" | bc)  # 144 is average transaction size in bytes
+miner_fee_BTC=$(echo "$feerate*144*.00000001" | bc)  # 144 is average transaction size in bytes
+
+#Blockchain
+#get last 3 blocks
+block0=$(bitcoin-cli getblockcount)
+block1=$(expr $block0 - 1)
+block2=$(expr $block0 - 2)
+
+#format last 3 blocks with thousands separator
+block0_fmt=$(echo $block0 | sed -e :a -e 's/\(.*[0-9]\)\([0-9]\{3\}\)/\1,\2/;ta')
+block1_fmt=$(echo $block1 | sed -e :a -e 's/\(.*[0-9]\)\([0-9]\{3\}\)/\1,\2/;ta')
+block2_fmt=$(echo $block2 | sed -e :a -e 's/\(.*[0-9]\)\([0-9]\{3\}\)/\1,\2/;ta')
+
+#get timestamps for last 3 blocks
+now=$(date +'%s')
+block0_time=$(bitcoin-cli getblock $(bitcoin-cli getblockhash $block0) | jq .time)
+block1_time=$(bitcoin-cli getblock $(bitcoin-cli getblockhash $block1) | jq .time)
+block2_time=$(bitcoin-cli getblock $(bitcoin-cli getblockhash $block2) | jq .time)
+
+#elapsed time calculation for last 3 blocks
+block0_age=$(echo "($now-$block0_time)/60" | bc)
+block1_age=$(echo "($now-$block1_time)/60" | bc)
+block2_age=$(echo "($now-$block2_time)/60" | bc)
+
+#number of tx in memory pool
+mem_pool=$(bitcoin-cli getmempoolinfo | jq .size | sed -e :a -e 's/\(.*[0-9]\)\([0-9]\{3\}\)/\1,\2/;ta')
+
+
+#Output
+output=$(
+echo -e "\e[1m\e[32mBitcoin Stats\e[0m"
+echo $(bitcoind -version | grep version | cut -d \- -f1)
+echo
+
+echo 1 BTC = "$"$BTC1
+echo
+echo -e "\e[1m\e[32mWallet\e[0m" 
+if [ $wallet = 1 ]
+	then
+	echo -e "\e[5m\e[42mBTC:\e[0m $BTC0 +$BTC_diff"
+	else echo BTC: $BTC0
+fi
+
+echo "US$: "$BTC_US
+echo miner fees
+echo satoshis/vByte: $feerate
+echo "btc(\$us)/tx: "$miner_fee_BTC"($"$miner_fee_US")" 
+echo
+
+echo -e "\e[1m\e[32mBlockchain\e[0m"
+echo Block: $block0_fmt  Age: $block0_age minutes
+echo Block: $block1_fmt  Age: $block1_age minutes
+echo Block: $block2_fmt  Age: $block2_age minutes
+echo Mempool: $mem_pool
+echo
+
+echo -e "\e[1m\e[32mNetwork\e[0m"
+echo GBs recv: $bytes_rcv
+echo GBs sent: $bytes_snt
+echo Inbound Connections: $inbound
+echo Outbound Connections: $outbound
+
+echo
+echo -e "\e[1m\e[32mServer UpTime\e[0m"
+printf '%dd:%dh:%dm:%ds  \n' $(($seconds/86400)) $(($seconds%86400/3600)) $(($seconds%3600/60)) $(($seconds%60))
+
+#is bitcoind monitor script still running? sometimes it closes unexpectedly
+if pgrep monitor > /dev/null
+	then echo Server Monitor is running ; echo
+	else echo Server Monitor has stopped ; echo
+fi
+
+#show available space on / and blockchain size on /mnt/crypto
+echo -e "\e[1m\e[32mStorage\e[0m"
+df -h --output='target','size','used','avail','pcent'| grep -w Mounted ; df -h --output='target','size','used','avail','pcent'| grep -w / ; df -h --output='target','size','used','avail','pcent'| grep -w /mnt/crypto
+
+) ###this bracket ends $output value#####
+
+clear
+echo "$output"
+
+#play a cash register sound if receive bitcoin
+if [ $wallet = 1 ]
+	then ssh root@192.168.1.6 'mpg123 -q - ' < /home/pi/.bitcoin/cash.mp3
+fi
+
+echo BTC0=$BTC0 > /home/pi/.bitcoin/BTC_value
+
+
+
+#write out some variables for troubleshooting in case bitcoind shuts down
+date > node_down_log
+echo Block:  $block0_fmt   Age:  $block0_age  minutes >> node_down_log
+echo Mempool: $mem_pool >> node_down_log
+echo >> node_down_log
+echo Total Connections:  $peers >> node_down_log
+printf 'Server UpTime: %dd:%dh:%dm:%ds  \n' $(($seconds/86400)) $(($seconds%86400/3600)) $(($seconds%3600/60)) $(($seconds%60)) >> node_down_log
+echo >> node_down_log
+free -m >> node_down_log
+
+sleep 11  #don't spam the server
+
+done
+
