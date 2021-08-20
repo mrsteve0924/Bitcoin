@@ -1,4 +1,3 @@
-# bitcoind
 some bitcoin-cli commands put together to get useful information from bitcoind
 
 ## screenshot
