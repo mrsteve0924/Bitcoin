@@ -6,7 +6,7 @@ some bitcoin-cli commands put together to get useful information from bitcoind
 
 
 ./addr
-compares current wallet addresses to used ones to prevent reusing old ones
+ - compares current wallet addresses to used ones to prevent reusing old ones
 
 ./monitor
-sends notification if bitcoin core crashes
+ - sends notification if bitcoin core crashes
