@@ -1,0 +1,18 @@
+#!/bin/bash
+
+
+service="bitcoind"
+start=$(date)
+
+while pgrep "$service" > /dev/null
+do
+    sleep 1
+	
+done
+
+echo Started at $start > node_status
+echo Stopped at $(date) >> node_status
+
+s-nail -A verizon -s "Bitcoind is down!" < node_status email@email.com 8885551212@txt.att.net
+
+
