@@ -1,5 +1,7 @@
 some bitcoin-cli commands put together to get useful information from bitcoind
 
+requires jq to parse json files
+
 bitcoin4 output
   - The wallet balance in BTC and $US will be displayed if wallet is enabled
 
