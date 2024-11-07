@@ -1,0 +1,10 @@
+#!/bin/bash
+
+
+start=$(grep -a "Bitcoin Core" /mnt/crypto/debug.log | grep -v "banlist.dat" | tail -n1)
+echo Started at $start > node_status
+echo Stopped at $(date -u) >> node_status
+
+s-nail -A verizon -s "Bitcoind is down!" < node_status user@verizon.net 6152797532@txt.att.net
+
+
