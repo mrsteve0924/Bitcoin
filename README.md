@@ -10,6 +10,6 @@ bitcoin-dashboard output
 ![bitcoin](https://github.com/user-attachments/assets/8d4be032-8c96-4302-aa64-bf49bf65163f)
 
 
-addr: shows used and new addresses.  help prevent reusing old addresses
+address: shows used and new addresses.  help prevent reusing old addresses
 
 bitcoin-down: sends email and sms notification if bitcoin core crashes
