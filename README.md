@@ -1,7 +1,7 @@
 # bitcoin
 buy me a beer: **3FtMVoSgCfmV3yPpA6cK5We8tShhyLiLzp**
 
-dashboard for current running bitcoin node
+dashboard for current running bitcoin node   
 some bitcoin-cli commands put together to get useful information from bitcoin server
 
 requires jq to parse json files
